@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 const CHROME = process.argv[2] ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const OUT = process.argv[3] ?? 'tests/e2e/out';
-const BASE = process.env.BASE_URL ?? 'http://localhost:4173/';
+const BASE = (process.env.BASE_URL ?? 'http://localhost:4173/') + '?e2e=';
 mkdirSync(OUT, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -61,7 +61,7 @@ try {
   await connect();
   await send('Page.enable'); await send('Runtime.enable');
   // ---- tutorijal, lekcija 1
-  await send('Page.navigate', { url: BASE + '#tutorial' });
+  await send('Page.navigate', { url: BASE + '1#tutorial' });
   check(await waitFor('[data-a="tutNext"]'), 'tutorijal se učitao');
   await shot('01-tutorial');
   check(await click('[data-a="tutNext"]'), 'tutorijal: korak "Dalje"');
@@ -75,15 +75,17 @@ try {
   await settle();
   check((await text('#scoreVal'))?.trim() === '24', 'Par 7/7 daje 24 boda');
   // ---- prava partija
-  await send('Page.navigate', { url: BASE + '#play=SMOKE001' });
-  await send('Page.reload');
+  await send('Page.navigate', { url: BASE + '2#play=SMOKE001' });
   await waitFor('[data-a="capture"]');
   await shot('02-round');
+  check(await click('[data-a="best"]'), 'NAJBOLJE radi prvi put');
+  await sleep(200);
+  check(await evaluate(`document.querySelector('[data-a="best"]').disabled`), 'NAJBOLJE je zaključano nakon jednog korištenja');
   let rounds = 0, guard = 0;
   while (guard++ < 120) {
     const scr = await evaluate(`(() => { if (document.querySelector('[data-a="capture"]')) return 'round'; if (document.querySelector('[data-type="collect"]')) return 'cashout'; if (document.querySelector('[data-a="leaveShop"]')) return 'shop'; if (document.querySelector('[data-type="startRound"]')) return 'map'; if (document.querySelector('[data-type="packSkip"]')) return 'pack'; return 'other'; })()`);
     if (scr === 'round') {
-      await click('[data-a="best"]'); await sleep(80);
+      await evaluate('window.__tablaSuggest && window.__tablaSuggest()'); await sleep(80);
       if (!(await click('[data-a="capture"]'))) { await click('#hand .card'); await sleep(60); await click('[data-a="lay"]'); }
       await settle();
     } else if (scr === 'cashout') { if (rounds === 0) await shot('03-cashout'); await click('[data-type="collect"]'); rounds++; await sleep(300); }
@@ -99,11 +101,26 @@ try {
   await shot('06-end');
   check(rounds >= 1, `odigrano ${rounds} rundi kroz UI`);
   check(['map', 'round', 'shop', 'gameover', 'cashout', 'pack'].includes(await phase()), 'partija je snimljena u localStorage');
+  // ---- klasični Tablić protiv kompjutera
+  await send('Page.navigate', { url: BASE + '3#classic' });
+  check(await waitFor('[data-a="cLay"]'), 'klasični Tablić se učitao');
+  await shot('09-classic');
+  let aiMoves = 0;
+  for (let i = 0; i < 6; i++) {
+    for (let w = 0; w < 40 && !(await evaluate(`!!document.querySelector('[data-a="cHand"]:not([disabled])')`)); w++) await sleep(150);
+    if (await click('[data-a="cBest"]')) { await sleep(120); }
+    if (!(await click('[data-a="cCapture"]'))) { await click('[data-a="cHand"]'); await sleep(80); await click('[data-a="cLay"]'); }
+    await sleep(1500);
+    const txt = await text('.center .hint');
+    if (txt && /Kompjuter|Computer/.test(txt)) aiMoves++;
+  }
+  await shot('10-classic-after');
+  check(aiMoves >= 3, `kompjuter je odigrao poteze (${aiMoves})`);
   // ---- meni i ostali ekrani
-  await send('Page.navigate', { url: BASE });
+  await send('Page.navigate', { url: BASE + '4' });
   await sleep(2200);
   await shot('07-menu');
-  for (const to of ['collection', 'settings', 'rules', 'stats', 'newrun']) {
+  for (const to of ['collection', 'settings', 'rules', 'stats', 'mode']) {
     await click(`[data-to="${to}"]`); await sleep(300); await shot('08-' + to); await click('[data-to="menu"]'); await sleep(200);
   }
   check(errors.length === 0, 'nema JS grešaka u konzoli' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));

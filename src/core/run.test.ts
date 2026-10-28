@@ -90,6 +90,17 @@ describe('spuštanje', () => {
   });
 });
 
+describe('dugme NAJBOLJE', () => {
+  it('ograničeno na bestPerRound korištenja po rundi', () => {
+    const run = newRun({ seed: 'BEST', seeded: true, deckId: 'deck_classic', stakeLevel: 0 });
+    let s = ok(run, { type: 'startRound' }).state;
+    expect(s.round!.bestLeft).toBe(1);
+    s = ok(s, { type: 'useBest' }).state;
+    expect(s.round!.bestLeft).toBe(0);
+    expect(apply(s, { type: 'useBest' }).events[0]).toMatchObject({ key: 'err.noBest' });
+  });
+});
+
 describe('gazde', () => {
   it('Policijski sat: 3 nošenja; Tamburaši: ruka −1; Konobar žuri: 0 spuštanja', () => {
     expect(computeRules(setRound(runWith({ boss: 'curfew' }), [], [])).captures).toBe(3);

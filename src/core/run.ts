@@ -26,7 +26,8 @@ export type Action =
   | { type: 'packPick'; index: number; targets?: string[] }
   | { type: 'packSkip' }
   | { type: 'leaveShop' }
-  | { type: 'continueEndless' };
+  | { type: 'continueEndless' }
+  | { type: 'useBest' };
 
 export type GameEvent =
   | { type: 'captured'; result: ScoreResult; captureType: string; groups: number; handCard: Card; tableCards: Card[]; tabla: boolean }
@@ -365,6 +366,14 @@ export function apply(prev: RunState, action: Action): { state: RunState; events
       run.phase = 'map';
       break;
     }
+    case 'useBest': {
+      const r = run.round;
+      if (run.phase !== 'round' || !r) return err('err.phase');
+      const left = r.bestLeft ?? RULES.bestPerRound;
+      if (left <= 0) return err('err.noBest');
+      r.bestLeft = left - 1;
+      break;
+    }
     case 'continueEndless': {
       if (run.phase !== 'won' || run.tutorial !== undefined) return err('err.phase');
       run.endless = true;
@@ -408,6 +417,7 @@ function startRound(run: RunState) {
     capturesLeft: rules.captures, laysLeft: rules.lays,
     score: 0, target: targetFor(run), boss,
     capturesMade: 0, laysMade: 0, tablas: 0, bestCapture: 0, flags: {},
+    bestLeft: RULES.bestPerRound,
   };
   const script = run.tutorial !== undefined ? TUTORIAL[run.tutorial] : undefined;
   if (script) {

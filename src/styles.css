@@ -283,6 +283,32 @@ input[type=range] { width: 100%; accent-color: var(--lamp); }
 .tut-box b { color: var(--lamp); }
 .tut-tag { font-family: var(--display); color: var(--neon2); font-size: .8rem; letter-spacing: .1em; }
 .topbar { display: none; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.mode-card { display: flex; flex-direction: column; gap: 10px; }
+.mode-card h3 { color: var(--lamp); font-size: 1.4rem; }
+.mode-card p { margin: 0; line-height: 1.5; }
+.mode-icon { font-size: 2.6rem; }
+.mode-goal { color: var(--neon2); font-weight: 600; }
+.goal-steps { line-height: 1.6; padding-left: 1.3em; display: grid; gap: 6px; }
+.goal-steps li::marker { color: var(--lamp); font-family: var(--display); }
+.ante-track { display: flex; gap: 4px; margin: 8px 0 2px; flex-wrap: wrap; }
+.ante-track .at { display: inline-flex; gap: 2px; padding: 2px; border-radius: 5px; }
+.ante-track .at.cur { box-shadow: 0 0 0 1px var(--lamp); }
+.ante-track i { width: 7px; height: 9px; border-radius: 2px; background: rgba(255,255,255,.14); }
+.ante-track i.boss { background: rgba(255,79,139,.3); }
+.ante-track i.done { background: var(--good); }
+.ante-track i.cur { background: var(--lamp); box-shadow: 0 0 6px var(--lamp); }
+.opp-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 14px; background: rgba(0,0,0,.28); box-shadow: inset 0 0 0 1px var(--line); }
+.opp-row.active { box-shadow: inset 0 0 0 2px var(--neon); }
+.opp-name { font-family: var(--display); color: var(--ink); }
+.opp-hand { display: flex; gap: 0; }
+.opp-hand .card.mini { --cw: 34px; margin-left: -12px; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.counter small { display: block; color: var(--ink-dim); font-size: .72rem; }
+.result-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.result-table th, .result-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+.result-table th:first-child, .result-table td:first-child { text-align: left; }
+.result-table th { color: var(--ink-dim); font-weight: 600; }
+.result-table tr.total td { font-family: var(--display); color: var(--lamp); }
 
 /* ---------- mobitel / uski ekrani ---------- */
 @media (max-width: 900px) {
@@ -300,6 +326,7 @@ input[type=range] { width: 100%; accent-color: var(--lamp); }
   .regs { min-height: calc(var(--cw) * 1.3); }
   .shop-grid { grid-template-columns: 1fr; }
   .map-rounds { grid-template-columns: 1fr; }
+  .mode-grid { grid-template-columns: 1fr; }
   .btn { font-size: .9rem; }
   .set-row { grid-template-columns: 1fr; }
 }

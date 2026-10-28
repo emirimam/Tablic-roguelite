@@ -61,6 +61,8 @@ export interface RoundState {
   bestCapture: number;
   flags: Record<string, number>;
   scripted?: boolean;
+  /** preostala korištenja dugmeta NAJBOLJE u ovoj rundi */
+  bestLeft?: number;
 }
 
 export type ShopItem =

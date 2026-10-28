@@ -43,6 +43,7 @@ export function deserializeMeta(json: string | null): MetaState {
       stats: { ...base.stats, ...(d.stats ?? {}) },
       settings: { ...base.settings, ...(d.settings ?? {}) },
       seen: { ...base.seen, ...(d.seen ?? {}) },
+      classic: { ...base.classic, ...(d.classic ?? {}) },
     };
   } catch {
     return base;

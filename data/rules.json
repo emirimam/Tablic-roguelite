@@ -10,31 +10,108 @@
   "shopSlots": 2,
   "packSlots": 2,
   "startMoney": 4,
-  "roundReward": [3, 4, 5],
+  "roundReward": [
+    3,
+    4,
+    5
+  ],
   "unusedCaptureMoney": 1,
   "interestPer": 5,
   "interestCap": 5,
   "rerollBase": 5,
-  "shopWeights": { "regular": 70, "brandy": 20, "cup": 10 },
-  "rarityWeights": { "common": 70, "uncommon": 25, "rare": 5 },
+  "shopWeights": {
+    "regular": 70,
+    "brandy": 20,
+    "cup": 10
+  },
+  "rarityWeights": {
+    "common": 70,
+    "uncommon": 25,
+    "rare": 5
+  },
   "legendaryPackChance": 0.005,
-  "editionChances": { "foil": 0.02, "holo": 0.014, "poly": 0.003, "negative": 0.003 },
-  "editionCost": { "foil": 2, "holo": 3, "poly": 5, "negative": 5 },
+  "editionChances": {
+    "foil": 0.02,
+    "holo": 0.014,
+    "poly": 0.003,
+    "negative": 0.003
+  },
+  "editionCost": {
+    "foil": 2,
+    "holo": 3,
+    "poly": 5,
+    "negative": 5
+  },
   "captureTypes": {
-    "pair": { "chips": 10, "mult": 1, "lvChips": 10, "lvMult": 1 },
-    "sum": { "chips": 20, "mult": 2, "lvChips": 15, "lvMult": 1 },
-    "double": { "chips": 30, "mult": 3, "lvChips": 20, "lvMult": 2 },
-    "triple": { "chips": 50, "mult": 4, "lvChips": 30, "lvMult": 3 }
+    "pair": {
+      "chips": 10,
+      "mult": 1,
+      "lvChips": 10,
+      "lvMult": 1
+    },
+    "sum": {
+      "chips": 20,
+      "mult": 2,
+      "lvChips": 15,
+      "lvMult": 1
+    },
+    "double": {
+      "chips": 30,
+      "mult": 3,
+      "lvChips": 20,
+      "lvMult": 2
+    },
+    "triple": {
+      "chips": 50,
+      "mult": 4,
+      "lvChips": 30,
+      "lvMult": 3
+    }
   },
-  "tabla": { "chips": 40, "xMult": 2, "lvChips": 25, "lvX": 0.5 },
-  "cardBonus": { "bigTen": 20, "smallTwo": 15 },
+  "tabla": {
+    "chips": 40,
+    "xMult": 2,
+    "lvChips": 25,
+    "lvX": 0.5
+  },
+  "cardBonus": {
+    "bigTen": 20,
+    "smallTwo": 15
+  },
   "enhancements": {
-    "gold": { "money": 3 },
-    "glass": { "xMult": 2, "breakChance": 4 },
-    "bonus": { "chips": 30 },
-    "mult": { "mult": 4 },
-    "steel": { "xMult": 1.5 }
+    "gold": {
+      "money": 3
+    },
+    "glass": {
+      "xMult": 2,
+      "breakChance": 4
+    },
+    "bonus": {
+      "chips": 30
+    },
+    "mult": {
+      "mult": 4
+    },
+    "steel": {
+      "xMult": 1.5
+    }
   },
-  "editions": { "foil": { "chips": 50 }, "holo": { "mult": 10 }, "poly": { "xMult": 1.5 } },
-  "seals": { "gold_seal": { "money": 3 } }
+  "editions": {
+    "foil": {
+      "chips": 50
+    },
+    "holo": {
+      "mult": 10
+    },
+    "poly": {
+      "xMult": 1.5
+    }
+  },
+  "seals": {
+    "gold_seal": {
+      "money": 3
+    }
+  },
+  "bestPerRound": 1,
+  "classicBestPerDeal": 2
 }

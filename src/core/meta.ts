@@ -25,6 +25,8 @@ export interface MetaState {
   raftDecks: string[];
   settings: Settings;
   tutorialDone: boolean;
+  goalSeen: boolean;
+  classic: { played: number; won: number; lost: number };
 }
 
 export const META_VERSION = 1;
@@ -41,6 +43,8 @@ export function newMeta(lang: 'bs' | 'en' = 'bs'): MetaState {
     raftDecks: [],
     settings: { lang, music: 0.5, sfx: 0.8, speed: 1, shake: true, reducedMotion: false, colorblind: false, crt: false, textScale: 1 },
     tutorialDone: false,
+    goalSeen: false,
+    classic: { played: 0, won: 0, lost: 0 },
   };
 }
 

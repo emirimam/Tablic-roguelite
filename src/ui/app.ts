@@ -6,6 +6,8 @@ import { serializeRun, deserializeRun, deserializeMeta } from '../core/save.ts';
 import { seedFromNumber, normalizeSeed } from '../core/rng.ts';
 import { ACHIEVEMENTS, BOSS, BOSSES, BRANDIES, BRANDY, CUP, CUPS, DECKS, REG, REGULARS, RULES, STAKES, VOUCHERS } from '../core/data.ts';
 import { TUTORIAL } from '../core/tutorial.ts';
+import { applyClassic, bestMove, classicPoints, newClassic, type ClassicAction, type ClassicEvent, type ClassicState } from '../core/classic.ts';
+import { evaluateSelection } from '../core/capture.ts';
 import { RANK_LABEL, SUIT_SYMBOL } from '../core/cards.ts';
 import type { Card, RunState } from '../core/types.ts';
 import type { ScoreStep } from '../core/scoring.ts';
@@ -20,8 +22,9 @@ const APP_VERSION = '0.9.0';
 const DEMO = import.meta.env.VITE_DEMO === '1';
 const RUN_KEY = 'tabla.run.v1';
 const META_KEY = 'tabla.meta.v1';
+const CLASSIC_KEY = 'tabla.classic.v1';
 
-type Screen = 'splash' | 'menu' | 'first' | 'newrun' | 'game' | 'collection' | 'stats' | 'settings' | 'rules';
+type Screen = 'splash' | 'menu' | 'first' | 'mode' | 'goal' | 'newrun' | 'game' | 'classic' | 'collection' | 'stats' | 'settings' | 'rules';
 
 interface UI {
   screen: Screen;
@@ -40,6 +43,11 @@ interface UI {
   confirm: string | null;
   prevTable: Set<string>;
   prevHand: Set<string>;
+  chand: string | null;
+  ctable: string[];
+  aiBusy: boolean;
+  ctarget: number;
+  goalBack: Screen;
 }
 
 let P: Platform;
@@ -50,7 +58,9 @@ const ui: UI = {
   screen: 'splash', colTab: 'regulars', nr: { deck: 'deck_classic', stake: 0, seed: '' },
   hand: null, table: [], cons: null, packIndex: null, packTargets: [], regSel: null,
   animating: false, skip: false, tutStep: 0, shopWarned: false, confirm: null, prevTable: new Set(), prevHand: new Set(),
+  chand: null, ctable: [], aiBusy: false, ctarget: 101, goalBack: 'mode',
 };
+let cl: ClassicState | null = null;
 
 // ---------------------------------------------------------------- start
 export function startApp(platform: Platform) {
@@ -63,6 +73,7 @@ export function startApp(platform: Platform) {
     run = deserializeRun(raw);
     if (!run) { P.storage.remove(RUN_KEY); setTimeout(() => toast('⚠️', t('err.save'), true), 600); }
   }
+  try { const c = P.storage.get(CLASSIC_KEY); if (c) { const parsed = JSON.parse(c) as ClassicState; if (parsed.version === 1 && parsed.phase !== 'matchEnd') cl = parsed; } } catch { P.storage.remove(CLASSIC_KEY); }
   applySettings();
   initTooltip(root);
   initNav({ onKey });
@@ -75,11 +86,18 @@ export function startApp(platform: Platform) {
   window.addEventListener('keydown', unlockAudio, { once: true });
   window.addEventListener('resize', () => render());
   (window as unknown as { __tablaBusy: () => boolean }).__tablaBusy = () => ui.animating;
+  // Test-hook samo za E2E (?e2e): predloži nošenje bez trošenja NAJBOLJE
+  if (location.search.includes('e2e')) (window as unknown as { __tablaSuggest: () => boolean }).__tablaSuggest = () => {
+    if (!run?.round) return false;
+    const b = bestSelection(run); if (!b) return false;
+    ui.hand = b.hand; ui.table = b.table; render(); return true;
+  };
   render();
   // Deep linkovi: #play = odmah nova partija, #tutorial = tutorijal, #rules = pravila
   const hash = location.hash.slice(1);
   if (hash === 'play' || hash.startsWith('play=')) { startRun({ deck: 'deck_classic', stake: 0, seed: hash.slice(5) }); run = apply(run!, { type: 'startRound' }).state; render(); musicFor(); return; }
   if (hash === 'tutorial') { startTutorial(0); return; }
+  if (hash === 'classic') { startClassic(101); return; }
   if (hash === 'rules') { go('rules'); return; }
   setTimeout(() => { if (ui.screen === 'splash') go(meta.tutorialDone || meta.stats.runs > 0 ? 'menu' : 'first'); }, 1400);
 }
@@ -99,13 +117,14 @@ function save() {
   P.storage.set(META_KEY, JSON.stringify(meta));
   if (run && run.tutorial === undefined && run.phase !== 'gameover' && !(run.phase === 'won' && !run.endless && false)) P.storage.set(RUN_KEY, serializeRun(run));
   if (run && run.phase === 'gameover') P.storage.remove(RUN_KEY);
+  if (cl && cl.phase !== 'matchEnd') P.storage.set(CLASSIC_KEY, JSON.stringify(cl)); else P.storage.remove(CLASSIC_KEY);
 }
 
-function go(s: Screen) { ui.screen = s; ui.confirm = null; hideTip(); render(); musicFor(); }
+function go(s: Screen) { ui.screen = s; ui.confirm = null; hideTip(); render(); musicFor(); if (s === 'classic') scheduleAi(); }
 
 function musicFor() {
   if (ui.screen === 'game' && run?.phase === 'round') playMusic(run.round?.boss ? 'boss' : 'game');
-  else if (ui.screen === 'game') playMusic('game');
+  else if (ui.screen === 'game' || ui.screen === 'classic') playMusic('game');
   else playMusic('menu');
 }
 
@@ -117,6 +136,9 @@ function render() {
     case 'splash': html = `<div class="menu-screen"><div class="menu-box"><div class="neon-sign">${t('neon.open')}</div><div class="logo">${t('game.title')}</div><div class="logo-sub">${t('game.subtitle')}</div></div></div>`; break;
     case 'menu': html = menuScreen(); break;
     case 'first': html = firstScreen(); break;
+    case 'mode': html = modeScreen(); break;
+    case 'goal': html = goalScreen(); break;
+    case 'classic': html = classicScreen(); break;
     case 'newrun': html = newRunScreen(); break;
     case 'collection': html = collectionScreen(); break;
     case 'stats': html = statsScreen(); break;
@@ -141,7 +163,8 @@ function menuScreen(): string {
     <div class="logo-sub">${t('game.subtitle')}</div>
     <div style="height:10px"></div>
     ${canContinue ? `<button class="btn big" data-a="continue" data-autofocus>${t('menu.continue')}</button>` : ''}
-    <button class="btn ${canContinue ? 'ghost' : 'big'}" data-a="go" data-to="newrun" ${canContinue ? '' : 'data-autofocus'}>${t('menu.new')}</button>
+    ${cl ? `<button class="btn ${canContinue ? 'ghost' : 'big'}" data-a="go" data-to="classic" ${canContinue ? '' : 'data-autofocus'}>${t('menu.continueClassic')}</button>` : ''}
+    <button class="btn ${canContinue || cl ? 'ghost' : 'big'}" data-a="go" data-to="mode" ${canContinue || cl ? '' : 'data-autofocus'}>${t('menu.new')}</button>
     <button class="btn ghost" data-a="tutorial" data-i="0">${t('menu.tutorial')}</button>
     <div class="row" style="width:100%;justify-content:center">
       <button class="btn ghost small" data-a="go" data-to="collection">${t('menu.collection')}</button>
@@ -175,7 +198,7 @@ function newRunScreen(): string {
       <b>${i + 1}. ${t(`stake.${s.id}.name`)}</b><small>${locked ? '🔒' : t(`stake.${s.id}.desc`)}${i > 0 && !locked ? '<br>' + t('stake.includes') : ''}</small></button>`;
   }).join('');
   return `<div class="page"><div class="page-inner">
-    <div class="page-head"><h2>${t('new.title')}</h2>${back()}</div>
+    <div class="page-head"><h2>${t('new.title')}</h2><span class="row"><button class="btn ghost small" data-a="goal" data-back="newrun">${t('goal.button')}</button>${back('mode')}</span></div>
     <div class="panel"><div class="label">${t('new.deck')}</div><div class="choice-grid" style="margin-top:8px">${decks}</div></div>
     <div class="panel"><div class="label">${t('new.stake')}</div><div class="choice-grid" style="margin-top:8px">${stakes}</div></div>
     <div class="panel row" style="justify-content:space-between">
@@ -211,6 +234,7 @@ function statsScreen(): string {
       ${item('stats.tablas', fmtNum(s.totalTablas))}${item('stats.furthest', fmtNum(s.furthestAnte))}
       ${item('stats.favorite', fav ? `${REG[fav[0]]?.icon ?? ''} ${t(`regular.${fav[0]}.name`)}` : '—')}
       ${item('stats.achievements', `${meta.achievements.length}/${ACHIEVEMENTS.length}`)}
+      ${item('stats.classic', `${meta.classic.won} / ${meta.classic.played}`)}
     </div></div></div>`;
 }
 
@@ -299,7 +323,7 @@ function infoBox(r: RunState): string {
 
 function menuBox(r: RunState): string {
   return `<div class="box hide-m"><div class="info-line"><span class="label">${t('hud.seed')}</span><span style="font-family:var(--display)">${r.seed}</span></div>
-    <div style="margin-top:8px"><button class="btn ghost small" data-a="go" data-to="menu" style="width:100%">${t('hud.menu')}</button></div></div>`;
+    <div style="margin-top:8px;display:grid;gap:6px"><button class="btn ghost small" data-a="goal" data-back="game">${t('goal.button')}</button><button class="btn ghost small" data-a="go" data-to="menu">${t('hud.menu')}</button></div></div>`;
 }
 
 function roundScreen(r: RunState): string {
@@ -355,6 +379,7 @@ function roundScreen(r: RunState): string {
     <div class="side left">
       <div class="box score-box">
         <div class="info-line"><span class="round-name">${roundName(r.roundIndex)}</span><span class="label">${t('hud.ante', { n: r.ante })}</span></div>
+        ${r.tutorial === undefined ? anteTrack(r) : ''}
         ${rd.boss ? bossHTML(rd.boss) : ''}
         <div class="info-line" style="margin-top:6px"><span class="label">${t('hud.target')}</span><span class="target">${fmtNum(rd.target)}</span></div>
         <div class="info-line"><span class="label">${t('hud.score')}</span><span class="score" id="scoreVal">${fmtNum(rd.score)}</span></div>
@@ -376,7 +401,7 @@ function roundScreen(r: RunState): string {
       <div class="hint ${forced ? 'warn' : ''}">${hint}</div>
       <div class="hand" id="hand">${handHTML}</div>
       <div class="actions">
-        <button class="btn blue" data-a="best" ${step ? 'disabled' : ''}>${t('btn.best')}</button>
+        <button class="btn blue" data-a="best" ${step || (rd.bestLeft ?? RULES.bestPerRound) <= 0 ? 'disabled' : ''} title="${t('best.tip', { n: RULES.bestPerRound })}">${t('btn.bestN', { n: rd.bestLeft ?? RULES.bestPerRound })}</button>
         <button class="btn" data-a="capture" ${captureOk ? '' : 'disabled'} ${captureOk ? 'data-autofocus' : ''}>${t('btn.capture')}</button>
         <button class="btn red" data-a="lay" ${layOk ? '' : 'disabled'}>${forced && full ? t('btn.discard') : t('btn.lay')}</button>
       </div>
@@ -757,7 +782,31 @@ async function onClick(e: MouseEvent) {
       ui.table = ui.table.includes(id) ? ui.table.filter(x => x !== id) : [...ui.table, id];
       sfx.select(); render(); break;
     }
-    case 'best': { if (!run) return; const b = bestSelection(run); if (b) { ui.hand = b.hand; ui.table = b.table; sfx.select(); render(); } else toast('🤷', t('hint.mustLay')); break; }
+    case 'best': {
+      if (!run) return;
+      const b = bestSelection(run);
+      if (!b) { toast('🤷', t('hint.mustLay')); return; }
+      if (!(await dispatch({ type: 'useBest' }))) return;
+      ui.hand = b.hand; ui.table = b.table; sfx.select(); render(); break;
+    }
+    case 'goal': ui.goalBack = (d.back as Screen) ?? 'mode'; go('goal'); break;
+    case 'goalOk': meta.goalSeen = true; save(); go(ui.goalBack === 'mode' ? 'newrun' : ui.goalBack); break;
+    case 'pickRogue': if (!meta.goalSeen) { ui.goalBack = 'mode'; go('goal'); } else go('newrun'); break;
+    case 'ctarget': ui.ctarget = Number(d.v); render(); break;
+    case 'classicStart': startClassic(ui.ctarget); break;
+    case 'cHand': if (!cl || cl.turn !== 0 || ui.aiBusy) return; ui.chand = ui.chand === d.id ? null : d.id!; ui.ctable = []; sfx.select(); render(); break;
+    case 'cTable': if (!cl || cl.turn !== 0 || ui.aiBusy) return; ui.ctable = ui.ctable.includes(d.id!) ? ui.ctable.filter(x => x !== d.id) : [...ui.ctable, d.id!]; sfx.select(); render(); break;
+    case 'cBest': {
+      if (!cl) return;
+      const b = bestMove(cl, 0);
+      if (!b) { toast('🤷', t('hint.mustLay')); return; }
+      if (await classicDispatch({ type: 'useBest' })) { ui.chand = b.handId; ui.ctable = b.tableIds; render(); }
+      break;
+    }
+    case 'cCapture': if (ui.chand && ui.ctable.length) await classicDispatch({ type: 'capture', handId: ui.chand, tableIds: ui.ctable }); break;
+    case 'cLay': if (ui.chand) await classicDispatch({ type: 'lay', handId: ui.chand }); break;
+    case 'cNext': await classicDispatch({ type: 'nextDeal' }); break;
+    case 'cNew': cl = null; save(); go('mode'); break;
     case 'capture': if (ui.hand && ui.table.length) await dispatch({ type: 'capture', handId: ui.hand, tableIds: ui.table }); break;
     case 'lay': if (ui.hand) await dispatch({ type: 'lay', handId: ui.hand }); break;
     case 'tutNext': ui.tutStep++; render(); break;
@@ -807,6 +856,13 @@ function onKey(key: string): boolean {
     return false;
   }
   if (ui.screen === 'splash') { go(meta.tutorialDone || meta.stats.runs > 0 ? 'menu' : 'first'); return true; }
+  if (ui.screen === 'classic') {
+    const clk = (sel: string) => { const b = root.querySelector<HTMLButtonElement>(sel); if (b && !b.disabled) b.click(); return true; };
+    if (k === 'c') return clk('[data-a="cCapture"]');
+    if (k === 'v') return clk('[data-a="cLay"]');
+    if (k === 'b') return clk('[data-a="cBest"]');
+    return false;
+  }
   if (ui.screen !== 'game' || run?.phase !== 'round') return false;
   const click = (sel: string) => { const b = root.querySelector<HTMLButtonElement>(sel); if (b && !b.disabled) b.click(); return true; };
   if (k === 'c') return click('[data-a="capture"]');
@@ -854,3 +910,190 @@ function toast(icon: string, html: string, err = false) {
 
 // pomoćno za konzolu/debug (ne koristi se u igri)
 export const debug = { get run() { return run; }, get meta() { return meta; }, BOSS, BRANDY, label: (c: Card) => RANK_LABEL[c.rank] + SUIT_SYMBOL[c.suit] };
+
+// ---------------------------------------------------------------- izbor moda, cilj igre
+function modeScreen(): string {
+  const seg = [[0, t('mode.classic.t0')], [51, t('mode.classic.t51')], [101, t('mode.classic.t101')]] as const;
+  return `<div class="page"><div class="page-inner">
+    <div class="page-head"><h2>${t('mode.title')}</h2>${back()}</div>
+    <div class="mode-grid">
+      <div class="panel mode-card">
+        <div class="mode-icon">🍻</div>
+        <h3>${t('mode.rogue.name')}</h3>
+        <p>${t('mode.rogue.desc')}</p>
+        <p class="mode-goal">${t('mode.rogue.goal')}</p>
+        <div class="row"><button class="btn big" data-a="pickRogue" data-autofocus>${t('mode.pick')}</button><button class="btn ghost small" data-a="goal" data-back="mode">${t('goal.button')}</button></div>
+      </div>
+      <div class="panel mode-card">
+        <div class="mode-icon">🃏</div>
+        <h3>${t('mode.classic.name')}</h3>
+        <p>${t('mode.classic.desc')}</p>
+        <p class="mode-goal">${t('mode.classic.goal')}</p>
+        <div class="row"><span class="label">${t('mode.classic.target')}</span><span class="seg">${seg.map(([v, l]) => `<button class="${ui.ctarget === v ? 'on' : ''}" data-a="ctarget" data-v="${v}">${l}</button>`).join('')}</span></div>
+        <div class="row"><button class="btn big green" data-a="classicStart">${t('mode.pick')}</button></div>
+      </div>
+    </div>
+  </div></div>`;
+}
+
+function goalScreen(): string {
+  const steps = [1, 2, 3, 4].map(i => `<li>${t('goal.step' + i)}</li>`).join('');
+  return `<div class="page"><div class="page-inner" style="max-width:720px">
+    <div class="page-head"><h2>${t('goal.title')}</h2>${back(ui.goalBack)}</div>
+    <div class="panel goal">
+      <p class="mode-goal">${t('goal.lead')}</p>
+      <ol class="goal-steps">${steps}</ol>
+      <p style="color:var(--ink-dim)">${t('goal.best', { n: RULES.bestPerRound })}</p>
+      <div class="row" style="justify-content:center"><button class="btn big" data-a="goalOk" data-autofocus>${t('goal.ok')}</button></div>
+    </div>
+  </div></div>`;
+}
+
+function anteTrack(r: RunState): string {
+  if (r.ante > 8) return `<div class="label" style="margin-top:4px">${t('hud.endless')} · ${t('hud.ante', { n: r.ante })}</div>`;
+  const groups = Array.from({ length: 8 }, (_, a) => {
+    const ante = a + 1;
+    const pips = [0, 1, 2].map(i => {
+      const done = ante < r.ante || (ante === r.ante && i < r.roundIndex);
+      const cur = ante === r.ante && i === r.roundIndex;
+      return `<i class="${done ? 'done' : cur ? 'cur' : ''} ${i === 2 ? 'boss' : ''}"></i>`;
+    }).join('');
+    return `<span class="at ${ante === r.ante ? 'cur' : ''}">${pips}</span>`;
+  }).join('');
+  return `<div class="ante-track" title="${t('hud.progress', { a: r.ante, r: r.roundIndex + 1 })}">${groups}</div><div class="label">${t('hud.progress', { a: r.ante, r: r.roundIndex + 1 })}</div>`;
+}
+
+// ---------------------------------------------------------------- klasični Tablić
+function startClassic(target: number) {
+  cl = newClassic(seedFromNumber(Date.now() ^ Math.floor(Math.random() * 1e9)), target);
+  meta.classic.played++;
+  ui.chand = null; ui.ctable = []; ui.aiBusy = false;
+  save();
+  sfx.card();
+  go('classic');
+}
+
+const cardName = (c: Card) => RANK_LABEL[c.rank] + SUIT_SYMBOL[c.suit];
+
+function moveText(m: NonNullable<ClassicState['lastMove']>): string {
+  const who = m.player === 0 ? 'you' : 'ai';
+  if (m.kind === 'lay') return t(`classic.${who}Lays`, { card: cardName(m.card) });
+  return t(`classic.${who}Captures`, { card: cardName(m.card), cards: m.captured.map(cardName).join(' + '), p: m.points }) + (m.tabla ? ' · ' + t('type.tabla') + '!' : '');
+}
+
+function handleClassicEvents(events: ClassicEvent[]) {
+  for (const e of events) {
+    if (e.type === 'move') {
+      if (e.move.kind === 'lay') sfx.lay(); else { sfx.card(); if (e.move.points) sfx.coin(); }
+      if (e.move.tabla) { banner(t('fx.tabla')); sfx.tabla(); confetti(); shake(); }
+    }
+    if (e.type === 'dealt') sfx.card();
+    if (e.type === 'dealEnd') sfx.cash();
+    if (e.type === 'matchEnd') {
+      if (e.winner === 0) { meta.classic.won++; sfx.win(); confetti(); } else if (e.winner === 1) { meta.classic.lost++; sfx.lose(); }
+    }
+  }
+}
+
+async function classicDispatch(a: ClassicAction): Promise<boolean> {
+  if (!cl || ui.aiBusy) return false;
+  const r = applyClassic(cl, a);
+  const err = r.events.find(e => e.type === 'error');
+  if (err && err.type === 'error') { sfx.error(); toast('⚠️', t(err.key), true); return false; }
+  cl = r.state;
+  if (a.type !== 'useBest') { ui.chand = null; ui.ctable = []; }
+  handleClassicEvents(r.events);
+  save();
+  render();
+  scheduleAi();
+  return true;
+}
+
+function scheduleAi() {
+  if (!cl || cl.phase !== 'play' || cl.turn !== 1 || ui.aiBusy || ui.screen !== 'classic') return;
+  ui.aiBusy = true;
+  render();
+  setTimeout(() => {
+    ui.aiBusy = false;
+    if (!cl || ui.screen !== 'classic') return;
+    const r = applyClassic(cl, { type: 'ai' });
+    cl = r.state;
+    handleClassicEvents(r.events);
+    save();
+    render();
+    scheduleAi();
+  }, 1100 / meta.settings.speed);
+}
+
+function classicScreen(): string {
+  if (!cl) return modeScreen();
+  const s = cl;
+  if (s.phase === 'dealEnd' || s.phase === 'matchEnd') return classicResultScreen(s);
+  const myTurn = s.turn === 0 && !ui.aiBusy;
+  const hand = s.hands[0].find(c => c.id === ui.chand) ?? null;
+  const can = hand ? capturableIds(hand, s.table) : new Set<string>();
+  const sel = s.table.filter(c => ui.ctable.includes(c.id));
+  const valid = hand && sel.length ? evaluateSelection(hand, sel) : null;
+  const pts = valid && hand ? [hand, ...sel].reduce((x, c) => x + classicPoints(c), 0) + (sel.length === s.table.length ? 1 : 0) : 0;
+  let hint = '';
+  if (!myTurn) hint = t('classic.turnAi');
+  else if (!hand) hint = t('classic.hint');
+  else if (!sel.length) hint = can.size ? t('hint.pickTable') : t('classic.noCapture');
+  else hint = valid ? t('classic.preview', { p: pts }) + (sel.length === s.table.length ? ' · ' + t('type.tabla') + '!' : '') : t('hint.invalid');
+  const table = s.table.map(c => cardHTML(c, { cls: [ui.ctable.includes(c.id) ? 'sel' : '', can.has(c.id) && !ui.ctable.includes(c.id) ? 'can' : '', s.lastMove?.kind === 'lay' && s.lastMove.card.id === c.id ? 'enter' : ''].join(' '), attrs: `data-a="cTable" data-id="${c.id}"` })).join('');
+  const myHand = s.hands[0].map(c => cardHTML(c, { cls: ui.chand === c.id ? 'sel' : '', attrs: `data-a="cHand" data-id="${c.id}" ${myTurn ? '' : 'disabled'}` })).join('');
+  const aiHand = s.hands[1].map(c => cardHTML({ ...c, faceDown: true }, { cls: 'mini', attrs: 'disabled tabindex="-1"' })).join('');
+  const target = s.target === 0 ? t('mode.classic.t0') : t('classic.toTarget', { n: s.target });
+  const side = (p: 0 | 1) => `<div class="counter ${p === 0 ? 'cap' : 'lay'}"><span class="label">${p === 0 ? t('classic.you') : t('classic.ai')}</span><b>${s.scores[p]}</b><small>${t('classic.captured', { n: s.piles[p].length, t: s.tablas[p], p: s.piles[p].reduce((x, c) => x + classicPoints(c), 0) + s.tablas[p] })}</small></div>`;
+  return `<div class="game" id="gameRoot">
+    <div class="side left">
+      <div class="box score-box">
+        <div class="info-line"><span class="round-name">${t('mode.classic.name')}</span><span class="label">${t('classic.deal', { n: s.dealNo })}</span></div>
+        <div class="label" style="margin:4px 0 8px">${target}</div>
+        <div class="counters">${side(0)}${side(1)}</div>
+      </div>
+      <div class="box"><div class="info-line"><span class="label">${t('classic.deckLeft')}</span><span>${s.drawPile.length}</span></div>
+        <div class="info-line"><span class="label">${t('btn.best')}</span><span>${s.bestLeft}</span></div></div>
+    </div>
+    <div class="center">
+      <div class="opp-row ${s.turn === 1 ? 'active' : ''}"><span class="opp-name">🤖 ${t('classic.ai')}${s.turn === 1 ? ' · ' + t('classic.thinking') : ''}</span><span class="opp-hand">${aiHand}</span></div>
+      <div class="hint">${s.lastMove ? moveText(s.lastMove) : '&nbsp;'}</div>
+      <div class="felt" id="felt">${table}</div>
+      <div class="hint ${valid ? 'warn' : ''}">${hint}</div>
+      <div class="hand" id="hand">${myHand}</div>
+      <div class="actions">
+        <button class="btn blue" data-a="cBest" ${myTurn && s.bestLeft > 0 ? '' : 'disabled'}>${t('btn.bestN', { n: s.bestLeft })}</button>
+        <button class="btn" data-a="cCapture" ${myTurn && valid ? '' : 'disabled'}>${t('btn.capture')}</button>
+        <button class="btn red" data-a="cLay" ${myTurn && hand ? '' : 'disabled'}>${t('btn.lay')}</button>
+      </div>
+    </div>
+    <div class="side right">
+      <div class="box hide-m"><div class="label">${t('menu.rules')}</div><p style="font-size:.85rem;line-height:1.45;color:var(--ink-dim);margin:6px 0 0">${t('classic.rules')}</p></div>
+      <div class="box"><button class="btn ghost small" data-a="go" data-to="menu" style="width:100%">${t('hud.menu')}</button></div>
+    </div>
+  </div>`;
+}
+
+function classicResultScreen(s: ClassicState): string {
+  const r = s.dealResult!;
+  const row = (k: string, a: number | string, b: number | string, cls = '') => `<tr class="${cls}"><td>${t(k)}</td><td>${a}</td><td>${b}</td></tr>`;
+  const end = s.phase === 'matchEnd';
+  const title = !end ? t('classic.dealEnd') : s.scores[0] === s.scores[1] ? t('classic.draw') : s.scores[0] > s.scores[1] ? t('classic.win') : t('classic.lose');
+  return `<div class="overlay-screen"><div class="panel center-col" style="max-width:520px;width:100%">
+    <div class="neon-sign" style="font-size:1.5rem">${title}</div>
+    <table class="result-table">
+      <tr><th></th><th>${t('classic.you')}</th><th>${t('classic.ai')}</th></tr>
+      ${row('classic.rowCount', r.cardsCount[0], r.cardsCount[1])}
+      ${row('classic.rowCards', r.cardPoints[0], r.cardPoints[1])}
+      ${row('classic.rowMost', r.mostCards[0], r.mostCards[1])}
+      ${row('classic.rowTablas', r.tablas[0], r.tablas[1])}
+      ${row('classic.rowTotal', r.total[0], r.total[1], 'total')}
+      ${row('classic.match', s.scores[0], s.scores[1], 'total')}
+    </table>
+    ${s.target ? `<small style="color:var(--ink-dim)">${t('classic.toTarget', { n: s.target })}</small>` : ''}
+    <div class="row" style="justify-content:center">
+      ${end ? `<button class="btn big green" data-a="classicStart" data-autofocus>${t('btn.newRun')}</button><button class="btn ghost" data-a="cNew">${t('mode.title')}</button>` : `<button class="btn big" data-a="cNext" data-autofocus>${t('classic.nextDeal')}</button>`}
+      <button class="btn ghost" data-a="go" data-to="menu">${t('btn.menu')}</button>
+    </div>
+  </div></div>`;
+}
