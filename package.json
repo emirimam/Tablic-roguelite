@@ -12,7 +12,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "sim": "node sim/run.ts"
+    "sim": "node sim/run.ts",
+    "smoke": "node tests/e2e/smoke.mjs",
+    "smoke": "node tests/e2e/smoke.mjs"
   },
   "devDependencies": {
     "eslint": "10.12.0",

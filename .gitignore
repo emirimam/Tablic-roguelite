@@ -3,3 +3,5 @@ dist/
 .vercel/
 *.log
 sim/out/
+tests/e2e/out/
+tests/e2e/out/

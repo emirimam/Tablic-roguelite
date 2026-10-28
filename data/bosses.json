@@ -1,7 +1,7 @@
 [
   { "id": "inspection", "minAnte": 1, "icon": "🕵️" },
   { "id": "curfew", "minAnte": 2, "icon": "🚓", "captures": 3 },
-  { "id": "darkness", "minAnte": 1, "icon": "🕯️", "faceDown": 2 },
+  { "id": "darkness", "minAnte": 2, "icon": "🕯️", "faceDown": 2 },
   { "id": "tamburitza", "minAnte": 1, "icon": "🎸", "hand": -1 },
   { "id": "rush", "minAnte": 2, "icon": "🏃", "lays": 0 },
   { "id": "drunk_guest", "minAnte": 3, "icon": "🥴" },

@@ -58,8 +58,8 @@ describe('golden: gosti i redoslijed', () => {
     expect(score(runWith({ regulars: ['mathematician'] }), C('7C'), [C('7H')], [], noTabla).total).toBe(24);
     expect(score(runWith({ regulars: ['mathematician'] }), C('10C'), [C('3H'), C('7D')], [], noTabla).total).toBe(40 * 10);
   });
-  it('Penzioner +40 na Par, Student +60 za tačno 3 karte', () => {
-    expect(score(runWith({ regulars: ['pensioner'] }), C('7C'), [C('7H')], [], noTabla).total).toBe(64);
+  it('Penzioner +30 Chips i +3 Mult na Par, Student +60 za tačno 3 karte', () => {
+    expect(score(runWith({ regulars: ['pensioner'] }), C('7C'), [C('7H')], [], noTabla).total).toBe((24 + 30) * 4);
     expect(score(runWith({ regulars: ['student'] }), C('KC'), [C('3H'), C('5D'), C('6S')], [], noTabla).total).toBe((20 + 10 + 14 + 60) * 2);
   });
   it('Stari majstor: figure se retriggeruju 2 puta (K12)', () => {

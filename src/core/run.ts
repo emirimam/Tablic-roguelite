@@ -136,7 +136,8 @@ export function interestFor(run: RunState, rules: Rules): number {
 export function mustForceLay(run: RunState): boolean {
   const r = run.round; if (!r) return false;
   const rules = computeRules(run);
-  return !canCaptureAny(r.hand, r.table, rules.aceAny) && (r.laysLeft <= 0 || r.table.length >= RULES.tableMax);
+  // skrivene karte (Nestanak struje) se ne računaju: igrač ne smije biti prisiljen da pogađa u mraku
+  return !canCaptureAny(r.hand, r.table.filter(c => !c.faceDown), rules.aceAny) && (r.laysLeft <= 0 || r.table.length >= RULES.tableMax);
 }
 
 export function previewCapture(run: RunState, handId: string, tableIds: string[]): (ScoreResult & { captureType: string; groups: number; value: number }) | null {

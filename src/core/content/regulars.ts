@@ -15,7 +15,7 @@ export const REGULAR_HOOKS: Record<string, Hooks> = {
   jeweler: suitMult,
   gardener: suitMult,
   miner: suitMult,
-  pensioner: { onCapture: (c, _i, d) => (c.type === 'pair' ? { chips: num(d, 'chips') } : null) },
+  pensioner: { onCapture: (c, _i, d) => (c.type === 'pair' ? { chips: num(d, 'chips'), mult: num(d, 'mult') } : null) },
   mathematician: { onCapture: (c, _i, d) => (c.type !== 'pair' ? { mult: num(d, 'mult') } : null) },
   student: { onCapture: (c, _i, d) => (c.tableCards.length === num(d, 'count') ? { chips: num(d, 'chips') } : null) },
   taxi_driver: { onRoundEnd: (_r, _i, d) => num(d, 'money') },

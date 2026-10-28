@@ -1,26 +1,42 @@
 # TABLA — kafanski roguelite
 
-Roguelike deckbuilder baziran na Tabliću. Steam (Win/Mac/Linux, Steam Deck) + web demo.
+Roguelike deckbuilder baziran na balkanskoj kartaškoj igri **Tablić**. Nosiš karte sa stola po zbiru, skupljaš ekscentrične stalne goste kafane koji množe bodove (Chips × Mult) i pokušavaš preživjeti 8 kafana i njihove gazde.
 
-## Kako pokrenuti razvoj s Claude Codeom
-1. Napravi prazan GitHub repo (npr. `tabla`) i raspakuj ovaj paket u njegov root.
-2. `git init && git add . && git commit -m "docs: initial design package"`
-3. Pokreni Claude Code u tom folderu.
-4. Zalijepi sadržaj ispod linije iz `KICKOFF_PROMPT.md`.
-5. Nakon svakog milestonea isprobaj build i odgovori Claude Codeu (ili koristi `/next-milestone`).
+Brzi početak u pregledniku: `/#play` (odmah partija), `/#tutorial` (tutorijal), `/#play=SEED` (partija sa seedom).
+
+## Razvoj
+```bash
+npm install
+npm run dev                               # dev server
+npm test                                  # unit testovi (src/core + i18n)
+npm run typecheck && npm run lint
+npm run build                             # web build u dist/
+npm run sim -- --runs 500 --bot smart     # simulator za balans
+npx vite preview --port 4173 & npm run smoke   # E2E kroz pravi Chrome
+```
+
+## Struktura
+| Putanja | Sadržaj |
+|---|---|
+| `src/core` | čista logika (pravila, bodovanje, partija, šank, meta, save), bez DOM-a; sav random ide kroz seeded RNG |
+| `src/render`, `src/ui` | proceduralne karte, ekrani, animacije, tooltipi, navigacija tastaturom i gamepadom |
+| `src/audio` | sintetizovani zvuk i muzika |
+| `src/i18n` | bs/en prevodi |
+| `data/*.json` | sav sadržaj i brojke |
+| `sim/` | headless simulator i botovi |
+| `tests/e2e` | E2E smoke test |
 
 ## Dokumentacija
 | Datoteka | Sadržaj |
 |---|---|
-| `CLAUDE.md` | Pravila i konvencije koje Claude Code čita u svakoj sesiji |
-| `docs/GDD.md` | Dizajn igre: pravila, bodovanje, struktura, UX, art, zvuk |
-| `docs/CONTENT.md` | Svi gosti, rakije, fildžani, gazde, investicije, špilovi, dostignuća |
-| `docs/TECH_SPEC.md` | Arhitektura, stack, model stanja, algoritmi, platforme |
-| `docs/ROADMAP.md` | M0–M10 s kriterijima prihvatanja |
-| `docs/RELEASE_CHECKLIST.md` | Sve za Steam lansiranje |
-| `docs/DECISIONS.md` / `docs/PROGRESS.md` | Popunjava Claude Code tokom rada |
+| `CLAUDE.md` | Pravila i konvencije za Claude Code |
+| `docs/GDD.md`, `docs/CONTENT.md`, `docs/TECH_SPEC.md`, `docs/ROADMAP.md` | Dizajn, sadržaj, arhitektura, milestoneovi |
+| `docs/DESIGN_REVIEW.md` | Rješenja nejasnoća, scenarij tutorijala, rizici balansa (Game Designer agent) |
+| `docs/ART_PROMPTS.md` | Stilski vodič i promptovi za portrete gostiju i gazda (Image Prompt Engineer agent) |
+| `docs/DECISIONS.md`, `docs/PROGRESS.md`, `docs/BALANCE.md` | Odluke, napredak, mjerenja balansa |
+
+## Kontrole
+Miš ili dodir (dugo držanje = opis). Tastatura: strelice, Enter, **C** NOSI, **V** SPUSTI, **B** NAJBOLJE, Esc nazad. Gamepad: A izbor, X NOSI, Y SPUSTI, B nazad, LB/RB ruka/sto.
 
 ## Slash komande (`.claude/commands/`)
-- `/next-milestone`: nastavi sljedeći milestone
-- `/balance`: pokreni simulator i predloži izmjene balansa
-- `/playtest-report`: obradi tvoje bilješke s playtesta u bugove i taskove
+- `/next-milestone`, `/balance`, `/playtest-report`

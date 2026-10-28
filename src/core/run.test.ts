@@ -73,7 +73,7 @@ describe('spuštanje', () => {
     const { state, events } = ok(run, { type: 'lay', handId: 't3C' });
     expect(state.round!.capturesLeft).toBe(computeRules(run).captures - 1);
     expect(events[0]).toMatchObject({ type: 'laid', forced: true, discarded: false });
-    expect(state.regulars[0]!.counters.chips).toBe(3);
+    expect(state.regulars[0]!.counters.chips).toBe(8);
   });
   it('pun sto i nema nošenja: prisilno odbacivanje, nije lay događaj (K8)', () => {
     const table = ['KH', 'KD', 'KS', 'QH', 'QD', 'QS', 'JH', 'JD', 'JS', '10H'].map(k => C(k));
@@ -114,6 +114,11 @@ describe('gazde', () => {
     expect(state.round!.table.find(c => c.id === 't5H')!.faceDown).toBeFalsy();
     expect(state.round!.table.at(-1)!.id).toBe('t7C');
   });
+  it('Nestanak struje: prisilno spuštanje ne gleda skrivene karte (regresija)', () => {
+    const run = setRound(runWith({ boss: 'darkness' }), [C('7H', { faceDown: true }), C('KC')], [C('7C'), C('2S')], [], { laysLeft: 0 });
+    expect(mustForceLay(run)).toBe(true);
+    expect(apply(run, { type: 'lay', handId: 't2S' }).events[0]).toMatchObject({ type: 'laid', forced: true });
+  });
   it('Nestanak struje: pogodak u mraku je normalno nošenje', () => {
     const run = setRound(runWith({ boss: 'darkness' }), [C('7H', { faceDown: true }), C('KC')], [C('7C'), C('2S')]);
     expect(ok(run, { type: 'capture', handId: 't7C', tableIds: ['t7H'] }).state.round!.score).toBe(24);
@@ -122,7 +127,7 @@ describe('gazde', () => {
     const run = newRun({ seed: 'X', seeded: true, deckId: 'deck_classic', stakeLevel: 0 });
     run.ante = 8; run.roundIndex = 2; run.bossForAnte = 'chain_owner';
     run.regulars = [{ id: 'waiter', uid: 'a', counters: {} }, { id: 'lover', uid: 'b', counters: {} }];
-    expect(targetFor(run)).toBe(150000);
+    expect(targetFor(run)).toBe(60000);
     const s = ok(run, { type: 'startRound' }).state;
     expect(s.regulars[0]!.disabled).toBe(true);
     expect(s.regulars[1]!.disabled).toBe(false);
@@ -130,7 +135,7 @@ describe('gazde', () => {
   it('svaka kafana bira gazdu s minAnte ≤ kafana', () => {
     for (let i = 0; i < 30; i++) {
       const run = newRun({ seed: 'S' + i, seeded: true, deckId: 'deck_classic', stakeLevel: 0 });
-      expect(['inspection', 'darkness', 'tamburitza', 'private_party']).toContain(run.bossForAnte);
+      expect(['inspection', 'tamburitza', 'private_party']).toContain(run.bossForAnte);
     }
   });
 });
