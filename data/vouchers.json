@@ -1,0 +1,10 @@
+[
+  { "id": "v_counter", "cost": 10, "icon": "🛒" },
+  { "id": "v_discount", "cost": 10, "icon": "🏷️", "discount": 0.25 },
+  { "id": "v_overtime", "cost": 10, "icon": "⏰" },
+  { "id": "v_table", "cost": 10, "icon": "🪵" },
+  { "id": "v_hands", "cost": 10, "icon": "✋" },
+  { "id": "v_distillery", "cost": 10, "icon": "⚗️" },
+  { "id": "v_annex", "cost": 10, "icon": "🏠" },
+  { "id": "v_bank", "cost": 10, "icon": "🏦", "interestCap": 10 }
+]

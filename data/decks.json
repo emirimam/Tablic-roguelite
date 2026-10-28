@@ -1,0 +1,8 @@
+[
+  { "id": "deck_classic", "unlock": "start", "color": "#b8323a" },
+  { "id": "deck_kafana", "unlock": "beat_boss_ante2", "captures": 1, "color": "#2f6b4a" },
+  { "id": "deck_merchant", "unlock": "money_30", "money": 10, "color": "#c99a2e" },
+  { "id": "deck_aces", "unlock": "tablas_10_run", "aces": true, "color": "#3b4fa0" },
+  { "id": "deck_short", "unlock": "win_run", "short": true, "hand": 1, "color": "#6b3d8f" },
+  { "id": "deck_lucky", "unlock": "cups_30", "cups": 2, "color": "#2b7d86" }
+]

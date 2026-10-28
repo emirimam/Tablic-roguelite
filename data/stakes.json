@@ -1,0 +1,7 @@
+[
+  { "id": "stake_kafana" },
+  { "id": "stake_restaurant", "bossNoMoney": true },
+  { "id": "stake_hotel", "targetMul": 1.25 },
+  { "id": "stake_casino", "lays": -1 },
+  { "id": "stake_raft", "shopExtra": 1, "targetMul": 1.5 }
+]

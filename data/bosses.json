@@ -1,0 +1,14 @@
+[
+  { "id": "inspection", "minAnte": 1, "icon": "🕵️" },
+  { "id": "curfew", "minAnte": 2, "icon": "🚓", "captures": 3 },
+  { "id": "darkness", "minAnte": 1, "icon": "🕯️", "faceDown": 2 },
+  { "id": "tamburitza", "minAnte": 1, "icon": "🎸", "hand": -1 },
+  { "id": "rush", "minAnte": 2, "icon": "🏃", "lays": 0 },
+  { "id": "drunk_guest", "minAnte": 3, "icon": "🥴" },
+  { "id": "private_party", "minAnte": 1, "icon": "🎉" },
+  { "id": "retirement", "minAnte": 2, "icon": "🪑" },
+  { "id": "rose_on_table", "minAnte": 3, "icon": "🌹" },
+  { "id": "tax", "minAnte": 2, "icon": "🧾", "money": 1 },
+  { "id": "stingy", "minAnte": 4, "icon": "🪙" },
+  { "id": "chain_owner", "minAnte": 8, "icon": "🏢", "final": true, "targetMul": 1.5 }
+]

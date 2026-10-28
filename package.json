@@ -1,0 +1,25 @@
+{
+  "name": "tabla",
+  "private": true,
+  "version": "0.9.0",
+  "type": "module",
+  "description": "TABLA — kafanski roguelite. Roguelike deckbuilder baziran na Tabliću.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "sim": "node sim/run.ts"
+  },
+  "devDependencies": {
+    "eslint": "10.12.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  },
+  "engines": { "node": ">=22.18" }
+}

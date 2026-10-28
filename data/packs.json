@@ -1,0 +1,7 @@
+[
+  { "id": "pack_regulars", "kind": "regulars", "options": 3, "picks": 1, "cost": 5, "weight": 4, "icon": "👥" },
+  { "id": "pack_brandy", "kind": "brandy", "options": 3, "picks": 1, "cost": 4, "weight": 4, "icon": "🥃" },
+  { "id": "pack_cups", "kind": "cups", "options": 3, "picks": 1, "cost": 4, "weight": 3, "cards": 6, "icon": "☕" },
+  { "id": "pack_cards", "kind": "cards", "options": 3, "picks": 1, "cost": 4, "weight": 3, "enhChance": 0.3, "sealChance": 0.1, "icon": "🂠" },
+  { "id": "pack_mega", "kind": "mega", "options": 5, "picks": 2, "cost": 8, "weight": 1, "icon": "🎁" }
+]

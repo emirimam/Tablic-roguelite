@@ -1,0 +1,8 @@
+[
+  { "id": "slivovitz", "target": "pair", "cost": 3 },
+  { "id": "loza", "target": "sum", "cost": 3 },
+  { "id": "pear", "target": "double", "cost": 3 },
+  { "id": "quince", "target": "triple", "cost": 3 },
+  { "id": "herbal", "target": "tabla", "cost": 3 },
+  { "id": "mead", "target": "all", "cost": 3, "packOnly": true, "packChance": 0.03 }
+]
